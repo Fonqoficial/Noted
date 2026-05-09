@@ -4,20 +4,6 @@ import tailwind from '@astrojs/tailwind';
 
 export default defineConfig({
   output: 'server',
-  adapter: vercel({
-    webAnalytics: { enabled: true },
-    speedInsights: { enabled: true }
-  }),
-  integrations: [tailwind()],
-  vite: {
-    optimizeDeps: {
-      exclude: ['@supabase/supabase-js']
-    }
-  },
-  // Asegurar que las cookies se manejen correctamente
-  server: {
-    headers: {
-      'Access-Control-Allow-Credentials': 'true'
-    }
-  }
+  adapter: vercel(),
+  integrations: [tailwind()]
 });

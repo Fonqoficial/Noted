@@ -5,6 +5,7 @@ import Footer from '@/components/Footer.astro';
 import ScoreCard from '@/components/ScoreCard.astro';
 import FilterBar from '@/components/FilterBar.astro';
 import { supabase } from '@/lib/supabase';
+import { getScores } from '@/lib/supabase';
 
 // Obtener parámetros de filtrado
 const url = new URL(Astro.request.url);

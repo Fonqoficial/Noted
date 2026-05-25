@@ -1,7 +1,8 @@
 <!-- ... mismo HTML que tienes ... -->
 <script>
   import { getBrowserClient } from '@/lib/supabase';
-  import { getCurrentUser, getUserProfile } from '@/lib/auth';
+  // AÑADIDO: getUserProfile a las importaciones
+  import { getCurrentUser, getUserRole, getUserProfile } from '@/lib/auth';
 
   // Usamos un IIFE para ejecutar la sesión inmediatamente
   (async () => {
@@ -22,12 +23,16 @@
       loginButton?.classList.add('hidden');
 
       const user = await getCurrentUser();
-      const profile = user ? await getUserProfile(user.id) : null;
       
+      // ✅ CORRECCIÓN: Ahora sí obtenemos el perfil del usuario
+      const profile = user ? await getUserProfile(user.id) : null;
+      const role = user ? await getUserRole(user.id) : null;
+
       if (userAvatar) {
+        // Ahora 'profile' ya existe y podemos usar full_name
         const initials = (profile?.full_name || user?.email || 'U')
           .split(' ')
-          .map(n => n[0])
+          .map((n: string) => n[0])
           .join('')
           .slice(0, 2)
           .toUpperCase();

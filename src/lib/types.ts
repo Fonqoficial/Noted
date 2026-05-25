@@ -5,7 +5,7 @@ export interface Composer {
   death_year: number | null;
   nationality: string | null;
   bio: string | null;
-  imagen_url: string | null;
+  imagen_url: string | null; 
   created_at: string;
 }
 
@@ -34,31 +34,11 @@ export interface ScoreWithComposer extends Score {
 export interface Database {
   public: {
     Tables: {
-      composers: {
-        Row: Composer;
-        Insert: Omit<Composer, 'id' | 'created_at'>; // Ajusta según necesites
-        Update: Partial<Omit<Composer, 'id' | 'created_at'>>;
-      };
-      scores: {
-        Row: Score;
-        Insert: Omit<Score, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Score, 'id' | 'created_at' | 'updated_at'>>;
-      };
-    };
-    Views: {
-      [_ in never]: never;
+      composers: { Row: Composer; Insert: any; Update: any };
+      scores: { Row: Score; Insert: any; Update: any };
     };
     Functions: {
-      // AQUÍ ES DONDE DEFINES TU FUNCIÓN
-      increment_downloads: {
-        Args: {
-          score_id: string;
-        };
-        Returns: void;
-      };
-    };
-    Enums: {
-      [_ in never]: never;
+      increment_downloads: { Args: { score_id: string }; Returns: any };
     };
   };
 }

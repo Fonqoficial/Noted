@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { supabase, incrementDownloads } from '@/lib/supabase';
 import { getDownloadUrl, fileExists } from '@/lib/r2';
+import type { ScoreWithComposer } from '@/lib/types'; // ✅ IMPORTANTE: Importamos el tipo
 
 export const GET: APIRoute = async ({ params, redirect }) => {
   try {
@@ -8,14 +9,24 @@ export const GET: APIRoute = async ({ params, redirect }) => {
 
     if (!id) return new Response('Score ID required', { status: 400 });
 
-    const { data: score, error } = await supabase
+    // 1. Obtenemos la data (sin asignar el nombre 'score' aquí todavía)
+    const { data, error } = await supabase
       .from('scores')
       .select('*, composer:composers(name)')
       .eq('id', id)
       .single();
 
-    if (error || !score) return new Response('Score not found', { status: 404 });
-    if (!score.pdf_url) return new Response('PDF not available', { status: 404 });
+    // 2. Verificamos si hay error o si la data no existe
+    if (error || !data) {
+      return new Response('Score not found', { status: 404 });
+    }
+
+    // 3. ✅ SOLUCIÓN: Forzamos el tipo para eliminar los errores de 'never'
+    const score = data as ScoreWithComposer;
+
+    if (!score.pdf_url) {
+      return new Response('PDF not available', { status: 404 });
+    }
 
     let pdfKey = score.pdf_url;
     if (pdfKey.startsWith('http')) {
@@ -24,13 +35,14 @@ export const GET: APIRoute = async ({ params, redirect }) => {
     }
 
     const exists = await fileExists(pdfKey);
-    if (!exists) return new Response('PDF file not found in storage', { status: 404 });
+    if (!exists) {
+      return new Response('PDF file not found in storage', { status: 404 });
+    }
 
     const filename = `${score.title} - ${score.composer.name}.pdf`
       .replace(/[^a-z0-9\s\-\.]/gi, '')
       .replace(/\s+/g, '_');
 
-    // ✅ CORREGIDO: Usando el objeto de opciones según la nueva firma de r2.ts
     const downloadUrl = await getDownloadUrl(pdfKey, {
       expiresIn: 600,
       filename: filename,
@@ -38,7 +50,6 @@ export const GET: APIRoute = async ({ params, redirect }) => {
     });
 
     // Ejecutar incremento de descargas
-    // Usamos await aquí para asegurar que Vercel no mate la función antes de terminar la DB update
     await incrementDownloads(id).catch(err => 
       console.error('Error incrementing downloads:', err)
     );

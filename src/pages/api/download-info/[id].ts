@@ -1,20 +1,32 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '@/lib/supabase';
 import { getDownloadUrl, fileExists } from '@/lib/r2';
+import type { ScoreWithComposer } from '@/lib/types'; // ✅ IMPORTANTE: Importamos el tipo
 
 export const GET: APIRoute = async ({ params }) => {
   try {
     const { id } = params;
     if (!id) return new Response(JSON.stringify({ error: 'Score ID required' }), { status: 400 });
 
-    const { data: score, error } = await supabase
+    // 1. Obtenemos los datos
+    const { data, error } = await supabase
       .from('scores')
       .select('*, composer:composers(name)')
       .eq('id', id)
       .single();
 
-    if (error || !score) return new Response(JSON.stringify({ error: 'Score not found' }), { status: 404 });
-    if (!score.pdf_url) return new Response(JSON.stringify({ error: 'PDF not available' }), { status: 404 });
+    // 2. Verificamos errores y FORZAMOS EL TIPO (Casting)
+    if (error || !data) {
+      return new Response(JSON.stringify({ error: 'Score not found' }), { status: 404 });
+    }
+
+    // ✅ AQUÍ ESTÁ LA SOLUCIÓN: Le decimos a TS que 'data' es un 'ScoreWithComposer'
+    const score = data as ScoreWithComposer;
+
+    // Ahora TS ya sabe que 'score' tiene pdf_url, title, etc.
+    if (!score.pdf_url) {
+      return new Response(JSON.stringify({ error: 'PDF not available' }), { status: 404 });
+    }
 
     let pdfKey = score.pdf_url;
     if (pdfKey.startsWith('http')) {
@@ -23,13 +35,14 @@ export const GET: APIRoute = async ({ params }) => {
     }
 
     const exists = await fileExists(pdfKey);
-    if (!exists) return new Response(JSON.stringify({ error: 'PDF file not found' }), { status: 404 });
+    if (!exists) {
+      return new Response(JSON.stringify({ error: 'PDF file not found' }), { status: 404 });
+    }
 
     const filename = `${score.title} - ${score.composer.name}.pdf`
       .replace(/[^a-z0-9\s\-\.]/gi, '')
       .replace(/\s+/g, '_');
 
-    // ✅ CORREGIDO: Usando el objeto de opciones según la nueva firma de r2.ts
     const downloadUrl = await getDownloadUrl(pdfKey, {
       expiresIn: 600,
       filename: filename,

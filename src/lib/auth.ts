@@ -1,7 +1,23 @@
 import { getBrowserClient } from './supabase';
 import type { User } from '@supabase/supabase-js';
 
-// ... interfaces UserProfile y UserRole se mantienen igual ...
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role: 'admin' | 'user';
+  created_at: string;
+  updated_at: string;
+}
 
 export async function getCurrentUser(): Promise<User | null> {
   const supabase = getBrowserClient();
@@ -11,14 +27,16 @@ export async function getCurrentUser(): Promise<User | null> {
 
 export async function getUserRole(userId: string): Promise<'admin' | 'user' | null> {
   const supabase = getBrowserClient();
-  const { data, error } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .single();
-
+  const { data, error } = await supabase.from('user_roles').select('role').eq('user_id', userId).single();
   if (error) return null;
   return data?.role || null;
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const supabase = getBrowserClient();
+  const { data, error } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
+  if (error) return null;
+  return data;
 }
 
 export async function isAdmin(userId: string): Promise<boolean> {
@@ -26,4 +44,14 @@ export async function isAdmin(userId: string): Promise<boolean> {
   return role === 'admin';
 }
 
-// ... resto de funciones usando getBrowserClient() ...
+export async function updateUserProfile(userId: string, updates: Partial<Pick<UserProfile, 'full_name' | 'avatar_url' | 'bio'>>): Promise<UserProfile | null> {
+  const supabase = getBrowserClient();
+  const { data, error } = await supabase.from('user_profiles').update(updates).eq('user_id', userId).select().single();
+  if (error) return null;
+  return data;
+}
+
+export async function signOut() {
+  const supabase = getBrowserClient();
+  await supabase.auth.signOut();
+}

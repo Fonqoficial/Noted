@@ -135,10 +135,11 @@ import Footer from '@/components/Footer.astro';
 </Layout>
 
 <script>
-  import { createBrowserClient } from '@/lib/supabase';
+  import { getBrowserClient } from '@/lib/supabase';
   import { getCurrentUser, getUserProfile, getUserRole, updateUserProfile, signOut } from '@/lib/auth';
 
-  const supabase = createBrowserClient();
+  const supabase = getBrowserClient();
+
   
   const loading = document.getElementById('loading');
   const content = document.getElementById('content');

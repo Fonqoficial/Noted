@@ -4,6 +4,7 @@ import Navbar from '@/components/Navbar.astro';
 import Footer from '@/components/Footer.astro';
 import ScoreCard from '@/components/ScoreCard.astro';
 import { getScoreById, supabase } from '@/lib/supabase';
+import type { ScoreWithComposer } from '@/lib/types';
 
 const { id } = Astro.params;
 
@@ -11,21 +12,24 @@ if (!id) {
   return Astro.redirect('/partituras');
 }
 
-// Obtener partitura
-const score = await getScoreById(id);
+// 1. Obtener partitura y FORZAR EL TIPO
+const scoreData = await getScoreById(id);
 
-if (!score) {
+if (!scoreData) {
   return Astro.redirect('/partituras');
 }
 
-// Incrementar contador de vistas
-await supabase
+const score = scoreData as ScoreWithComposer;
+
+// 2. Incrementar contador de vistas
+// ✅ SOLUCIÓN: Usamos (supabase as any) para evitar el error de "parameter of type never"
+await (supabase as any)
   .from('scores')
   .update({ views: score.views + 1 })
   .eq('id', id);
 
-// Obtener partituras relacionadas del mismo compositor
-const { data: relatedScores } = await supabase
+// 3. Obtener partituras relacionadas y tiparlas
+const { data: relatedData } = await supabase
   .from('scores')
   .select(`
     *,
@@ -39,7 +43,9 @@ const { data: relatedScores } = await supabase
   .neq('id', id)
   .limit(4);
 
-const difficultyLabels = {
+const relatedScores = (relatedData as unknown as ScoreWithComposer[]) || [];
+
+const difficultyLabels: Record<string, string> = {
   beginner: 'Principiante',
   intermediate: 'Intermedio',
   advanced: 'Avanzado',
@@ -75,6 +81,7 @@ const difficultyLabels = {
                 src={score.thumbnail_url} 
                 alt={score.title}
                 class="w-full h-full object-cover"
+                loading="lazy"
               />
             ) : (
               <div class="w-full h-full flex items-center justify-center">
@@ -128,7 +135,7 @@ const difficultyLabels = {
           <div class="bg-gray-50 rounded-lg p-4">
             <div class="text-sm text-gray-600 mb-1">Dificultad</div>
             <div class="font-semibold text-gray-900">
-              {difficultyLabels[score.difficulty]}
+              {difficultyLabels[score.difficulty] || score.difficulty}
             </div>
           </div>
 
@@ -213,8 +220,7 @@ const difficultyLabels = {
 </Layout>
 
 <script>
-  // Manejar descarga de PDF
-  const downloadBtn = document.getElementById('download-btn');
+  const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
   const downloadCount = document.getElementById('download-count');
 
   downloadBtn?.addEventListener('click', async () => {
@@ -223,7 +229,6 @@ const difficultyLabels = {
 
     if (!scoreId) return;
 
-    // Deshabilitar botón mientras descarga
     downloadBtn.disabled = true;
     downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
     downloadBtn.innerHTML = `
@@ -234,10 +239,8 @@ const difficultyLabels = {
     `;
 
     try {
-      // Opción 1: Descarga directa (redirige a la URL de R2)
       window.location.href = `/api/download/${scoreId}`;
 
-      // Esperar un poco y restaurar el botón
       setTimeout(() => {
         downloadBtn.disabled = false;
         downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -249,7 +252,6 @@ const difficultyLabels = {
           Descargar PDF
         `;
 
-        // Actualizar contador de descargas
         fetch(`/api/download`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -267,18 +269,15 @@ const difficultyLabels = {
 
     } catch (error) {
       console.error('Error al descargar:', error);
-      
-      // Restaurar botón
       downloadBtn.disabled = false;
       downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
       downloadBtn.innerHTML = `
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
         </svg>
         Descargar PDF
       `;
-      
       alert('Error al descargar la partitura. Por favor, intenta de nuevo.');
     }
   });

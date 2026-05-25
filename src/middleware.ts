@@ -1,49 +1,45 @@
 import { defineMiddleware } from 'astro:middleware';
-import { createBrowserClient } from './lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export const onRequest = defineMiddleware(async ({ url, redirect, locals, cookies }, next) => {
   
-  const supabase = createBrowserClient();
-  
-  // Rutas públicas que no requieren autenticación
+  // 1. Rutas públicas que no requieren autenticación
   const publicPaths = ['/', '/partituras', '/compositores', '/buscar', '/login', '/register'];
   const isPublicPath = publicPaths.some(path => 
     url.pathname === path || url.pathname.startsWith(path + '/')
   );
 
-  // Rutas de admin
   const isAdminPath = url.pathname.startsWith('/admin');
-  
-  // Rutas de cuenta de usuario
   const isAccountPath = url.pathname.startsWith('/account');
 
-  // Si es ruta pública, continuar
   if (isPublicPath && !isAdminPath && !isAccountPath) {
     return next();
   }
 
-  // Verificar sesión
+  // 2. Verificar sesión
   const { data: { session } } = await supabase.auth.getSession();
 
   if (!session) {
-    // No hay sesión, redirigir a login
     return redirect('/login?redirect=' + encodeURIComponent(url.pathname));
   }
 
-  // Si es ruta de admin, verificar rol
+  // 3. Si es ruta de admin, verificar rol en la base de datos
   if (isAdminPath) {
-    const { data: roleData } = await supabase
+    const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', session.user.id)
       .single();
 
-    if (!roleData || roleData.role !== 'admin') {
+    // ✅ SOLUCIÓN AL ERROR 'NEVER': Usamos (roleData as any)
+    // Esto le dice a TS: "No te preocupes por el tipo, yo sé que role existe"
+    if (roleError || !roleData || (roleData as any).role !== 'admin') {
       return redirect('/?error=unauthorized');
     }
   }
 
-  // Pasar usuario a locals para usarlo en las páginas
+  // 4. Pasar la información al contexto de Astro (locals)
+  // Ahora esto NO dará error porque ya configuramos src/env.d.ts
   locals.user = session.user;
   locals.session = session;
 

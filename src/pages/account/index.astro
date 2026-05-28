@@ -1,7 +1,7 @@
 ---
-import Layout from '@/layouts/Layout.astro';
-import Navbar from '@/components/Navbar.astro';
-import Footer from '@/components/Footer.astro';
+import Layout from '../../layouts/Layout.astro';
+import Navbar from '../../components/Navbar.astro';
+import Footer from '../../components/Footer.astro';
 ---
 
 <Layout title="Mi Cuenta - MusicLib">
@@ -135,8 +135,8 @@ import Footer from '@/components/Footer.astro';
 </Layout>
 
 <script>
-  import { getBrowserClient } from '@/lib/supabase';
-  import { getCurrentUser, getUserProfile, getUserRole, updateUserProfile, signOut } from '@/lib/auth';
+  import { getBrowserClient } from '../../lib/supabase';
+  import { getCurrentUser, getUserProfile, getUserRole, updateUserProfile, signOut } from '../../lib/auth';
 
   const supabase = getBrowserClient();
 
